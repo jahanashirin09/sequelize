@@ -1,5 +1,9 @@
+const { where } = require("sequelize");
 const db=require("../config/db")
 var jwt=require("jsonwebtoken");
+const { UserModel } = require("../model/usermodel");
+const bcrypt = require('bcrypt'); 
+
 
 
 
@@ -19,7 +23,7 @@ function verifyToken(req,res,next){
         }
         else{
            next();
-        }
+        }   
     })
     
 }
@@ -28,47 +32,44 @@ function verifyToken(req,res,next){
 
 const login= async(req,res) =>{
     try {
-        if(req.body.username==undefined || req.body.password==undefined){
-            res.status(500).send({error:"aythentication failed"})
-        }
-        let username=req.body.username;
-        let password=req.body.password;
-        
-        const data=await db.query("SELECT * FROM users WHERE username=? and password=?",[username,password]);
-        const db_password=await db.query("SELECT password FROM users WHERE username=? and password=?",[username,password]);
-       // const user_password= db_password[0][0].password;
-
-        console.log(data[0][0].display_name)
-        
-      
-        if(password.length==0 ||db_password[0][0] ==undefined){
-            console.log("hii")
-            return res.status(401).send({
-                success: false,
-                message: "login failed",
-            });
-        }
-        let resp={
-            id:data[0][0].id,
-            display_name:data[0][0].display_name
-        }
-        
-        let token=jwt.sign(resp,"secret",{expiresIn:60})
-        res.status(200).send({
-            success: true,
-            message: "logged successfully",
-            token:token
+        const { username, password } = req.body;
+        const user = await  UserModel.findOne({
+            where: {username}
         });
-
-        
-        
-    } catch (error) {
-        {
-            console.error(error);
-            return res.status(500).json({error:error.message})
+        if (!user) {
+            return res.status(404).json('username  not found');
         }
+
+
+        // Verify password
+        const saltRounds = 10;
+       
+     const hashed_password=await bcrypt.hash(user.password, saltRounds)
+   
+      console.log(hashed_password);
+      const passwordValid=await bcrypt.compare(password,hashed_password)
+      console.log(passwordValid);
         
+        if (!passwordValid) {
+            console.log(password);
+            console.log(hashed_password);
+            return res.status(404).json('Incorrect username and password combination');
+        }
+
+
+        // Authenticate user with jwt
+        const token = jwt.sign({ id: user.id }, "secret", {
+            expiresIn: 3600
+        });
+   
+        res.status(200).send({
+            id: user.id,
+            name: user.username,
+
+            accessToken: token,
+        });
+    } catch (err) {
+        return res.status(500).send('Sign in error');
     }
-    
-};
+}
 module.exports={login,verifyToken};

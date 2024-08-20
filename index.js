@@ -21,10 +21,9 @@ app.get("/test",(req,res)=>{
 });
 
 
-const PORT=6000;
  connect()
 
-app.listen(7000, ()=>{
+app.listen(process.env.PORT, ()=>{
     console.log("server running")
    
  });
