@@ -56,7 +56,8 @@ router.post('/create',
 
 //UPDATE STUDENT
 
-router.put('/update/:id',verifyToken,updateStudent);
+router.put('/update/:id',[check("id").exists().withMessage("id is required").isNumeric().withMessage("id should be only numbers")],
+verifyToken,updateStudent);
 
 //DELETE STUDENT
 
